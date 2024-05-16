@@ -21,11 +21,12 @@ class MPC_CTL{
 
     void solve();
     void updatePara();
+    void getFirstCon();
 
     private:
 
     float h = 0.2; // step[s]
-    int N = 20; // prediction horizon
+    int N = 15; // prediction horizon
     float I1 = 0.103; float I2 = 0.104; float I3 = 0.161; 
     float m = 4.8; // kg
     float V = 0.0285; // m3
@@ -95,6 +96,9 @@ class MPC_CTL{
     vector<double> ubg;
     std::map<std::string, DM> arg, res;
     Function solver;
+
+    // output
+    vector<double> u_f;
 };
 
 #endif

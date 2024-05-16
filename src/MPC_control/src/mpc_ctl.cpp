@@ -40,11 +40,13 @@ MPC_CTL::MPC_CTL(){
     // make the decision variable one column vector
     OPT_variables = SX::vertcat({SX::reshape(X, 3*(N+1), 1), SX::reshape(U, 3*N, 1)});
     SXDict nlp = {{"x", OPT_variables}, {"f", obj}, {"g", g}, {"p", P}};
-    solver = nlpsol("solver", "ipopt", nlp);
+    Dict opts = {{"ipopt.max_iter", 99}, {"ipopt.print_level", 5}, {"print_time", 1}, 
+                    {"ipopt.acceptable_tol", 1e-8}, {"ipopt.acceptable_obj_change_tol", 1e-6}};
+    solver = nlpsol("solver", "ipopt", nlp, opts);
 
     // Initial guess and bounds for the optimization variables
     x0 = {0.0, 0.0, 0.0};
-    xs = {0.0, 0.0, 0.0};
+    xs = {0.0, 1.0, 0.0};
     x_dot = {0.0, 0.0, 0.0};
     X0 = SX::repmat(x0, 1, N+1);
     
@@ -71,7 +73,6 @@ void MPC_CTL::solve(){
     arg["x0"] = SX::vertcat({SX::reshape(X0.T(), 3*(N+1), 1),
                                 SX::reshape(u0.T(), 3*N, 1)});
     res = solver(arg);
-    cout << res << endl;
 }
 
 void MPC_CTL::updatePara(){
@@ -79,4 +80,10 @@ void MPC_CTL::updatePara(){
     para.insert(para.end(), x0.begin(), x0.end());
     para.insert(para.end(), xs.begin(), xs.end());
     para.insert(para.end(), x_dot.begin(), x_dot.end());
+}
+
+void MPC_CTL::getFirstCon(){
+    u_f.clear();
+    vector<double> u_f_ = res.at("x").get_elements();
+    u_f.insert(u_f.begin(), u_f_.begin(), u_f_.begin()+3);
 }

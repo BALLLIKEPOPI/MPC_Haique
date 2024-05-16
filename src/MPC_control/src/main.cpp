@@ -17,5 +17,6 @@ int main(int argc, char **argv){
 
     MPC_CTL MPC_Ctl;
     MPC_Ctl.solve();
+    MPC_Ctl.getFirstCon();
 
 }
