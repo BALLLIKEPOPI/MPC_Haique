@@ -14,10 +14,13 @@ class MPC_CTL{
     ~MPC_CTL();
 
     SX Dyna_Func(SX state, SX control, SX abs_states_dot){
-        return DM::vertcat({(control(0) - (I3-I2)*state(1)*state(2) - rou*c1*abs_states_dot(0)*state(0))/I1,
-                            (control(1) - (I1-I3)*state(0)*state(3) - rou*c2*abs_states_dot(1)*state(1))/I2,
-                            (control(2) - (I2-I1)*state(0)*state(2) - rou*c3*abs_states_dot(2)*state(2))/I3});
+        return SX::vertcat({(control(0) - (I3-I2)*state(1)*state(2) - rou*c1*abs_states_dot(0)*state(0))/I1,
+                            (control(1) - (I1-I3)*state(0)*state(2) - rou*c2*abs_states_dot(1)*state(1))/I2,
+                            (control(2) - (I2-I1)*state(0)*state(1) - rou*c3*abs_states_dot(2)*state(2))/I3});
     }
+
+    void solve();
+    void updatePara();
 
     private:
 
@@ -31,6 +34,7 @@ class MPC_CTL{
     float l = 0.6; // m
     float c1 = 0.01; float c2 = 0.01; float c3 = 0.01;
 
+    Slice all;
     // states
     SX theta = SX::sym("theta"); 
     SX phi = SX::sym("phi"); 
@@ -56,8 +60,12 @@ class MPC_CTL{
     SX P = SX::sym("P", 3*n_state); 
     // A vector that represents the states over the optimization problem.
     SX X = SX::sym("X", n_state, (N+1));
+    // initialization of the states decision variables
+    SX X0 = SX::sym("X0", 1, N+1);
+    // 3 control inputs for each robot
+    SX u0 = SX::zeros(N, 3);
 
-    SX obj = SX::sym("obj"); // objective function
+    SX obj = 0; // objective function
     SX g = SX::sym("g", 3*(N+1)); // onstraints vector
 
     SX Q = SX::zeros(3, 3); // weighing matrices (states)
@@ -77,11 +85,16 @@ class MPC_CTL{
 
     // Initial guess and bounds for the optimization variables
     vector<double> x0;
+    vector<double> xs;
+    vector<double> x_dot;
+    vector<double> para;
     vector<double> lbx;
     vector<double> ubx;
     // Nonlinear bounds
     vector<double> lbg;
     vector<double> ubg;
+    std::map<std::string, DM> arg, res;
+    Function solver;
 };
 
 #endif
