@@ -22,11 +22,13 @@ class MPC_CTL{
     void solve();
     void updatePara();
     void getFirstCon();
+    void updatex0x_dot(double roll, double pitch, double yaw);
+    void updatexs();
 
     private:
 
-    float h = 0.2; // step[s]
-    int N = 15; // prediction horizon
+    float h = 0.02; // step[s]
+    int N = 10; // prediction horizon
     float I1 = 0.103; float I2 = 0.104; float I3 = 0.161; 
     float m = 4.8; // kg
     float V = 0.0285; // m3
@@ -86,6 +88,7 @@ class MPC_CTL{
 
     // Initial guess and bounds for the optimization variables
     vector<double> x0;
+    vector<double> x_last;
     vector<double> xs;
     vector<double> x_dot;
     vector<double> para;

@@ -1,0 +1,6 @@
+MPC_control
+/home/popi/MPC_ws/devel/.private/mpc_control/cmake.lock /home/popi/MPC_ws/devel/./cmake.lock
+/home/popi/MPC_ws/devel/.private/mpc_control/lib/mpc_control/mpc_control_node /home/popi/MPC_ws/devel/lib/mpc_control/mpc_control_node
+/home/popi/MPC_ws/devel/.private/mpc_control/lib/pkgconfig/mpc_control.pc /home/popi/MPC_ws/devel/lib/pkgconfig/mpc_control.pc
+/home/popi/MPC_ws/devel/.private/mpc_control/share/mpc_control/cmake/mpc_controlConfig.cmake /home/popi/MPC_ws/devel/share/mpc_control/cmake/mpc_controlConfig.cmake
+/home/popi/MPC_ws/devel/.private/mpc_control/share/mpc_control/cmake/mpc_controlConfig-version.cmake /home/popi/MPC_ws/devel/share/mpc_control/cmake/mpc_controlConfig-version.cmake
