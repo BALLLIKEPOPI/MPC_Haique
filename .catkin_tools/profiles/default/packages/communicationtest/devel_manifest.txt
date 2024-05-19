@@ -1,6 +1,0 @@
-CommunicationTest
-/home/popi/MPC_ws/devel/.private/communicationtest/cmake.lock /home/popi/MPC_ws/devel/./cmake.lock
-/home/popi/MPC_ws/devel/.private/communicationtest/lib/communicationtest/communicationtest_node /home/popi/MPC_ws/devel/lib/communicationtest/communicationtest_node
-/home/popi/MPC_ws/devel/.private/communicationtest/lib/pkgconfig/communicationtest.pc /home/popi/MPC_ws/devel/lib/pkgconfig/communicationtest.pc
-/home/popi/MPC_ws/devel/.private/communicationtest/share/communicationtest/cmake/communicationtestConfig-version.cmake /home/popi/MPC_ws/devel/share/communicationtest/cmake/communicationtestConfig-version.cmake
-/home/popi/MPC_ws/devel/.private/communicationtest/share/communicationtest/cmake/communicationtestConfig.cmake /home/popi/MPC_ws/devel/share/communicationtest/cmake/communicationtestConfig.cmake
