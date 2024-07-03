@@ -1,5 +1,6 @@
 #include "mpc_ctl.h"
 #include <asm-generic/errno.h>
+#include <casadi/core/calculus.hpp>
 #include <casadi/core/function.hpp>
 #include <casadi/core/generic_matrix.hpp>
 #include <casadi/core/mx.hpp>
@@ -12,50 +13,61 @@
 
 MPC_CTL::MPC_CTL(){
 
-    Q(0, 0) = 5; R(0, 0) = 0;
-    Q(1, 1) = 5; R(1, 1) = 0;
-    Q(2, 2) = 5; R(2, 2) = 0;
+    Q(0, 0) = 5; Q(3, 3) = 5;
+    Q(1, 1) = 5; Q(4, 4) = 5;
+    Q(2, 2) = 5; Q(5, 5) = 5;
+    Q(6, 6) = 5; Q(7, 7) = 5;
+    Q(8, 8) = 5; Q(9, 9) = 5;
+    Q(10, 10) = 5; Q(11, 11) = 5;
+    R(0, 0) = 0; R(1, 1) = 0;
+    R(2, 2) = 0; R(3, 3) = 0;
+    R(4, 4) = 0; R(5, 5) = 0;
+    R(6, 6) = 0; R(7, 7) = 0;
+    R(8, 8) = 0; R(9, 9) = 0;
 
     st = X(all, 0);
-    abs_st_dot = abs(P(Slice(6, 9)));
-    g(Slice(0, 3)) = st - P(Slice(0, 3));
+    g(Slice(0, 12)) = st - P(Slice(0, 12));
 
     for(int i = 0; i < N; i++){
         st = X(all, i);
         con = U(all, i);
-        obj += SX::mtimes({(st-P(Slice(3, 6))).T(), Q, (st-P(Slice(3, 6)))}) +
+        obj += SX::mtimes({(st-P(Slice(12, 24))).T(), Q, (st-P(Slice(12, 24)))}) +
                 SX::mtimes({con.T(), R, con});
         st_next = X(all, i+1);
         // RK4
-        k1 = Dyna_Func(st, con, abs_st_dot);
-        k2 = Dyna_Func(st + h/2*k1, con, abs_st_dot);
-        k3 = Dyna_Func(st + h/2*k2, con, abs_st_dot);
-        k4 = Dyna_Func(st + h*k3, con, abs_st_dot);
+        k1 = Dyna_Func(st, con);
+        k2 = Dyna_Func(st + h/2*k1, con);
+        k3 = Dyna_Func(st + h/2*k2, con);
+        k4 = Dyna_Func(st + h*k3, con);
         st_next_RK4 = st + h/6*(k1+k2+k3+k4);
-        abs_st_dot = SX::abs(st_next - st)/h;
         // compute constraints 
-        g(Slice((i+1)*3, (i+2)*3)) = st_next - st_next_RK4;
+        g(Slice((i+1)*n_state+i*3, (i+2)*n_state+i*3)) = st_next - st_next_RK4;
+        g(Slice((i+2)*n_state+i*3, (i+2)*n_state+i*3+1)) = U(1,i)-U(5,i);
+        g(Slice((i+2)*n_state+i*3+1, (i+2)*n_state+i*3+2)) = U(3,i)-U(7,i);
+        g(Slice((i+2)*n_state+i*3+2, (i+2)*n_state+i*3+3)) = U(8,i)*U(9,i);
     }
     // make the decision variable one column vector
-    OPT_variables = SX::vertcat({SX::reshape(X, 3*(N+1), 1), SX::reshape(U, 3*N, 1)});
+    OPT_variables = SX::vertcat({SX::reshape(X, 12*(N+1), 1), SX::reshape(U, 10*N, 1)});
     SXDict nlp = {{"x", OPT_variables}, {"f", obj}, {"g", g}, {"p", P}};
     Dict opts = { {"ipopt.max_iter", 99}, {"ipopt.print_level", 0}, {"print_time", 1}, 
                     {"ipopt.acceptable_tol", 1e-8}, {"ipopt.acceptable_obj_change_tol", 1e-6}};
     solver = nlpsol("solver", "ipopt", nlp, opts);
 
     // Initial guess and bounds for the optimization variables
-    x0 = {0.0, 0.0, 0.0}; // initial state
-    x_last = {0.0, 0.0, 0.0}; // last state
-    xs = {0.0, 0.0, 0.0}; // desire state
-    x_dot = {0.0, 0.0, 0.0};
+    x0 = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // initial state
+    x_last = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // last state
+    xs = {0.0, pi/5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // desire state
     X0 = SX::repmat(x0, 1, N+1);
     
-    lbx.insert(lbx.begin(), 3*(N+1), -pi/2);
-    lbx.insert((lbx.begin()+3*(N+1)), 3*N, -15);
-    ubx.insert(ubx.begin(), 3*(N+1), pi/2);
-    ubx.insert((ubx.begin()+3*(N+1)), 3*N, 15);
-    lbg.insert(lbg.begin(), 3*(N+1), 0);
-    ubg.insert(ubg.begin(), 3*(N+1), 0);
+    state_lower_bound = {-pi/2, -pi/2, -pi/2, -inf, -inf, -inf, -inf, -inf, -inf, -inf, -inf, -inf};
+    state_upper_bound = {pi/2, pi/2, pi/2, inf, inf, inf, inf, inf, inf, inf, inf, inf};
+
+    for(int i = 0; i < N+1; i++){
+        lbx.insert(lbx.end(), state_lower_bound.begin(), state_lower_bound.end());
+        ubx.insert(ubx.end(), state_upper_bound.begin(), state_upper_bound.end());
+    }
+    lbg.insert(lbg.begin(), n_state*(N+1)+3*N, 0);
+    ubg.insert(ubg.begin(), n_state*(N+1)+3*N, 0);
 
     arg["lbx"] = lbx;
     arg["ubx"] = ubx;
@@ -70,8 +82,8 @@ void MPC_CTL::solve(){
     updatePara(); // set the values of the parameters vector
     arg["p"] = para;
     // initial value of the optimization variables
-    arg["x0"] = SX::vertcat({SX::reshape(X0.T(), 3*(N+1), 1),
-                                SX::reshape(u0.T(), 3*N, 1)});
+    arg["x0"] = SX::vertcat({SX::reshape(X0.T(), 12*(N+1), 1),
+                                SX::reshape(u0.T(), 10*N, 1)});
     res = solver(arg);
     getFirstCon();
 }
@@ -86,23 +98,23 @@ void MPC_CTL::updatePara(){
 void MPC_CTL::getFirstCon(){
     u_f.clear();
     vector<double> u_f_ = res.at("x").get_elements();
-    u_f.insert(u_f.begin(), u_f_.begin()+3*(N+1), u_f_.begin()+3+3*(N+1));
-    cout << "uf0: " << u_f[0] 
-        << "  uf1: " << u_f[1] 
-        << "  uf2: " << u_f[2] << endl;
+    u_f.insert(u_f.begin(), u_f_.begin()+12*(N+1), u_f_.begin()+10+12*(N+1));
+    // cout << "uf0: " << u_f[0] 
+    //     << "  uf1: " << u_f[1] 
+    //     << "  uf2: " << u_f[2] << endl;
 }
 
-void MPC_CTL::updatex0x_dot(const double roll, const double pitch, const double yaw){
+void MPC_CTL::updatex0(const double roll, const double pitch, const double yaw){
     x_last = x0;
-    x0.clear();
-    x0.push_back(roll);
-    x0.push_back(pitch);
-    x0.push_back(yaw);
+    // x0.clear();
+    // x0.push_back(roll);
+    // x0.push_back(pitch);
+    // x0.push_back(yaw);
 
-    x_dot.clear();
-    x_dot.push_back((x0[0]-x_last[0])/h);
-    x_dot.push_back((x0[1]-x_last[1])/h);
-    x_dot.push_back((x0[2]-x_last[2])/h);
+    // x_dot.clear();
+    // x_dot.push_back((x0[0]-x_last[0])/h);
+    // x_dot.push_back((x0[1]-x_last[1])/h);
+    // x_dot.push_back((x0[2]-x_last[2])/h);
 }
 
 void MPC_CTL::updatexs(){

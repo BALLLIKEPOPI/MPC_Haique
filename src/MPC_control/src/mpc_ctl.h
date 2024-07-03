@@ -13,16 +13,39 @@ class MPC_CTL{
     MPC_CTL();
     ~MPC_CTL();
 
-    SX Dyna_Func(SX state, SX control, SX abs_states_dot){
-        return SX::vertcat({(control(0) - (I3-I2)*state(1)*state(2) - rou*c1*abs_states_dot(0)*state(0))/I1,
-                            (control(1) - (I1-I3)*state(0)*state(2) - rou*c2*abs_states_dot(1)*state(1))/I2,
-                            (control(2) - (I2-I1)*state(0)*state(1) - rou*c3*abs_states_dot(2)*state(2))/I3});
+    SX Dyna_Func(SX state, SX con){
+        SX M1 = c*con(0)/k;     SX M2 = c*con(1)/k;     
+        SX M3 = c*con(2)/k;     SX M4 = c*con(3)/k; 
+        SX M5 = c*con(4)/k;     SX M6 = c*con(5)/k; 
+        SX M7 = c*con(6)/k;     SX M8 = c*con(7)/k; 
+
+        SX Mx = (-M2+M6)*cos(con(9))+(-M4+M8)*cos(con(8))+
+                    l*((con(1)+con(5))*sin(con(9))-(con(3)+con(7))*sin(con(8)));
+        SX My = l*(-con(0)-con(4)+con(2)+con(6));
+        SX Mz = M1+M3-M2-M4+M6+M8-M5-M7+(-M2+M6)*sin(con(9))+(-M4+M8)*sin(con(8));
+
+        SX Tx = (con(1)+con(5))*cos(con(9))+(con(3)+con(7))*cos(con(8));
+        SX Ty = 0;
+        SX Tz = con(0)+con(2)+con(4)+con(6)+(con(1)+con(5))*sin(con(9))+
+                    (con(3)+con(7))*sin(con(8));
+        return SX::vertcat({state(3),
+                            state(4),
+                            state(5),
+                            (Mx - (I3-I2)*state(4)*state(5))/I1,
+                            (My - (I1-I3)*state(3)*state(5))/I2,
+                            (Mz - (I2-I1)*state(3)*state(4))/I3,
+                            state(9),
+                            state(10),
+                            state(11),
+                            1/m*(Tx+(rou*V-m)*G),
+                            1/m*(Ty+(rou*V-m)*G),
+                            1/m*(Tz+(rou*V-m)*G)});
     }
 
     void solve();
     void updatePara();
     void getFirstCon();
-    void updatex0x_dot(double roll, double pitch, double yaw);
+    void updatex0(double roll, double pitch, double yaw);
     void updatexs();
 
     private:
@@ -31,36 +54,42 @@ class MPC_CTL{
     int N = 10; // prediction horizon
     float I1 = 0.103; float I2 = 0.104; float I3 = 0.161; 
     float m = 4.8; // kg
-    float V = 0.0285; // m3
+    float V = 0.00285; // m3
     float rou = 1000; // kg/m3
     float G = 9.8; // m/s2
     float l = 0.6; // m
     float c1 = 0.01; float c2 = 0.01; float c3 = 0.01;
+    float k = 0.0000005; // 推力系数
+    float c = 0.0000001; // 反扭系数
 
     Slice all;
     // states
-    SX theta = SX::sym("theta"); 
-    SX phi = SX::sym("phi"); 
-    SX psi = SX::sym("psi"); 
-    SX state = DM::vertcat({theta, phi, psi});
-    int n_state = 3;
+    SX phi = SX::sym("phi");        SX p = SX::sym("p");
+    SX theta = SX::sym("theta");    SX q = SX::sym("q");
+    SX psi = SX::sym("psi");        SX r = SX::sym("r");
+    SX x = SX::sym("x");            SX u = SX::sym("u");
+    SX y = SX::sym("y");            SX v = SX::sym("v");
+    SX z = SX::sym("z");            SX w = SX::sym("w");
+    SX state = DM::vertcat({phi, theta, psi, p, q, r, 
+                                    x, y, z, u, v, w});
+    int n_state = 12;
     
     // controls
-    SX t_theta = SX::sym("t_theta");
-    SX t_phi = SX::sym("t_phi");
-    SX t_psi = SX::sym("t_psi");
-    SX control = DM::vertcat({t_theta, t_phi, t_psi});
-    int n_control = 3;
+    SX T1 = SX::sym("T1");          SX T4 = SX::sym("T4");
+    SX T2 = SX::sym("T2");          SX T5 = SX::sym("T5");
+    SX T3 = SX::sym("T3");          SX T6 = SX::sym("T6");
+    SX T7 = SX::sym("T7");          SX T8 = SX::sym("T8");
+    SX alpha = SX::sym("alpha");    SX beta = SX::sym("beta");
+    SX control = DM::vertcat({T1, T2, T3, T4, T5, T6, 
+                                    T7, T8, alpha, beta});
+    int n_control = 10;
 
     // parameter
-    SX abs_theta_dot = SX::sym("abs_theta_dot");
-    SX abs_phi_dot = SX::sym("abs_phi_dot");
-    SX abs_psi_dot = SX::sym("abs_psi_dot");
-    SX abs_states_dot = DM::vertcat({abs_theta_dot, abs_phi_dot, abs_psi_dot});
+
 
     SX U = SX::sym("U", n_control, N); // Decision variables (controls)
     // parameters (which include the initial state and the reference state)
-    SX P = SX::sym("P", 3*n_state); 
+    SX P = SX::sym("P", 2*n_state); 
     // A vector that represents the states over the optimization problem.
     SX X = SX::sym("X", n_state, (N+1));
     // initialization of the states decision variables
@@ -69,15 +98,14 @@ class MPC_CTL{
     SX u0 = SX::zeros(N, 3);
 
     SX obj = 0; // objective function
-    SX g = SX::sym("g", 3*(N+1)); // onstraints vector
+    SX g = SX::sym("g", n_state*(N+1)+3*N); // constraints vector
 
-    SX Q = SX::zeros(3, 3); // weighing matrices (states)
-    SX R = SX::zeros(3, 3); // weighing matrices (controls)
+    SX Q = SX::zeros(n_state, n_state); // weighing matrices (states)
+    SX R = SX::zeros(n_control, n_control); // weighing matrices (controls)
     SX st = SX::sym("st", n_state); // initial state
     SX st_next = SX::sym("st_next", n_state);
     SX con = SX::sym("con", n_control);
-    SX abs_st_dot = SX::sym("abs_st_dot", 3);
-    SX OPT_variables = SX::sym("OPT_variables", 3*(N+1)+3*N);
+    SX OPT_variables = SX::sym("OPT_variables", 12*(N+1)+10*N);
 
     // RK4
     SX k1 = SX::sym("k1");
@@ -92,6 +120,8 @@ class MPC_CTL{
     vector<double> xs;
     vector<double> x_dot;
     vector<double> para;
+    vector<double> state_upper_bound;
+    vector<double> state_lower_bound;
     vector<double> lbx;
     vector<double> ubx;
     // Nonlinear bounds
