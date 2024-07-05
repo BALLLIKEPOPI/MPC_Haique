@@ -4,7 +4,10 @@
 #include<vector>
 #include <casadi/casadi.hpp>
 #include "mpc_ctl.h"
+#include "ros/publisher.h"
 #include "ros/ros.h"
+#include "ros/service_client.h"
+#include "ros/subscriber.h"
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -13,12 +16,14 @@
 #include <gazebo_msgs/ModelStates.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
-
+#include <gazebo_msgs/GetModelState.h>
+#include <nav_msgs/Odometry.h>
 
 using namespace std;
 using namespace casadi;
 
 mavros_msgs::State current_state;
+ros::Publisher odometry_pub;
 MPC_CTL MPC_Ctl;
 
 // for realfly
@@ -27,21 +32,31 @@ MPC_CTL MPC_Ctl;
 void local_pose_cb(const gazebo_msgs::ModelStates::ConstPtr& msg){
     double roll, pitch, yaw;
     // for realfly
-    // geometry_msgs::PoseStamped current_pose = *msg;
+    // geometry_msgs::PoseStamped current_odom = *msg;
     // for sim
-    gazebo_msgs::ModelStates current_pose = *msg;
+    std::string model_name = msg->name[3];
+    geometry_msgs::Pose model_pose = msg->pose[3];
+    geometry_msgs::Twist model_twist = msg->twist[3];
 
     // for realfly
-    // double w = current_pose.pose.orientation.w;
-    // double x = current_pose.pose.orientation.x;
-    // double y = current_pose.pose.orientation.y;
-    // double z = current_pose.pose.orientation.z;
+    // double w = current_odom.pose.orientation.w;
+    // double x = current_odom.pose.orientation.x;
+    // double y = current_odom.pose.orientation.y;
+    // double z = current_odom.pose.orientation.z;
     // for sim
-    double w = current_pose.pose.data()->orientation.w;
-    double x = current_pose.pose.data()->orientation.x;
-    double y = current_pose.pose.data()->orientation.y;
-    double z = current_pose.pose.data()->orientation.z;
-    
+    double w = model_pose.orientation.w;
+    double x = model_pose.orientation.x;
+    double y = model_pose.orientation.y;
+    double z = model_pose.orientation.z;
+    double x_ = model_pose.position.x;
+    double y_ = model_pose.position.y;
+    double z_ = model_pose.position.z;
+    double v_x = model_twist.linear.x;
+    double v_y = model_twist.linear.y;
+    double v_z = model_twist.linear.z;
+    double w_x = model_twist.angular.x;
+    double w_y = model_twist.angular.y;
+    double w_z = model_twist.angular.z;
 
     double sinr_cosp = 2 * (w * x + y * z);
     double cosr_cosp = 1 - 2 * (x * x + y * y);
@@ -68,19 +83,20 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "main");
     ros::NodeHandle nh;
 
-    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, state_cb);
     // for realfly
+    // ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, state_cb);
     // ros::Subscriber local_pose_sub = nh.subscribe<geometry_msgs::PoseStamped>(
     //                                 "mavros/local_position/pose", 10, local_pose_cb);
     // for sim
-    ros::Subscriber local_pose_sub = nh.subscribe<gazebo_msgs::ModelStates>(
-                                "gazebo/model_states", 10, local_pose_cb);
+    ros::Subscriber sub = nh.subscribe("/gazebo/model_states", 10, local_pose_cb);
+
     ros::Rate rate(50.0);
 
-    while(ros::ok() && !current_state.connected){
-        ros::spinOnce();
-        rate.sleep();
-    }
+    // for realfly
+    // while(ros::ok() && !current_state.connected){
+    //     ros::spinOnce();
+    //     rate.sleep();
+    // }
     // MPC_Ctl.solve();
     while(ros::ok()) {
         MPC_Ctl.solve();

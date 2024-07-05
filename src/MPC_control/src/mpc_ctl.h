@@ -37,9 +37,9 @@ class MPC_CTL{
                             state(9),
                             state(10),
                             state(11),
-                            1/m*(Tx+(rou*V-m)*G),
-                            1/m*(Ty+(rou*V-m)*G),
-                            1/m*(Tz+(rou*V-m)*G)});
+                            1/m*(cos(state(1))*cos(state(2))*Tx+(cos(state(2))*sin(state(1))*cos(state(0))+sin(state(2))*sin(state(0)))*Tz),
+                            1/m*(cos(state(0))*sin(state(2))*Tx+(sin(state(2))*sin(state(1))*cos(state(0))-cos(state(2))*sin(state(0))*Tz)),
+                            1/m*(-sin(state(1))*Tx+cos(state(0))*cos(state(1))*Tz+(rou*V-m)*G)});
     }
 
     void solve();
@@ -50,7 +50,7 @@ class MPC_CTL{
 
     private:
 
-    float h = 0.02; // step[s]
+    float h = 0.3; // step[s]
     int N = 10; // prediction horizon
     float I1 = 0.103; float I2 = 0.104; float I3 = 0.161; 
     float m = 4.8; // kg
@@ -95,7 +95,7 @@ class MPC_CTL{
     // initialization of the states decision variables
     SX X0 = SX::sym("X0", 1, N+1);
     // 3 control inputs for each robot
-    SX u0 = SX::zeros(N, 3);
+    SX u0 = SX::zeros(N, 10);
 
     SX obj = 0; // objective function
     SX g = SX::sym("g", n_state*(N+1)+3*N); // constraints vector
@@ -122,6 +122,8 @@ class MPC_CTL{
     vector<double> para;
     vector<double> state_upper_bound;
     vector<double> state_lower_bound;
+    vector<double> con_upper_bound;
+    vector<double> con_lower_bound;
     vector<double> lbx;
     vector<double> ubx;
     // Nonlinear bounds

@@ -61,10 +61,15 @@ MPC_CTL::MPC_CTL(){
     
     state_lower_bound = {-pi/2, -pi/2, -pi/2, -inf, -inf, -inf, -inf, -inf, -inf, -inf, -inf, -inf};
     state_upper_bound = {pi/2, pi/2, pi/2, inf, inf, inf, inf, inf, inf, inf, inf, inf};
-
+    con_lower_bound = {0, -2, 0, -2, 0, -2, 0, -2, -pi/2, -pi/2};
+    con_upper_bound = {2, 2, 2, 2, 2, 2, 2, 2,pi/2, pi/2};
     for(int i = 0; i < N+1; i++){
         lbx.insert(lbx.end(), state_lower_bound.begin(), state_lower_bound.end());
         ubx.insert(ubx.end(), state_upper_bound.begin(), state_upper_bound.end());
+    }
+    for(int i = 0; i < N; i++){
+        lbx.insert(lbx.end(), con_lower_bound.begin(), con_lower_bound.end());
+        ubx.insert(ubx.end(), con_upper_bound.begin(), con_upper_bound.end());
     }
     lbg.insert(lbg.begin(), n_state*(N+1)+3*N, 0);
     ubg.insert(ubg.begin(), n_state*(N+1)+3*N, 0);
