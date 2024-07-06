@@ -1,0 +1,10 @@
+float32 thrust1
+float32 thrust2
+float32 thrust3
+float32 thrust4
+float32 thrust5
+float32 thrust6
+float32 thrust7
+float32 thrust8
+float32 alpha
+float32 beta

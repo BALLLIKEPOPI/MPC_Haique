@@ -2,8 +2,11 @@
 #define __MPC_CTL_H__
 
 #include "casadi/casadi.hpp"
+#include "mpc_control/controlPub.h"
 #include "eigen3/Eigen/Eigen"
 #include <vector>
+#include <ros/ros.h>
+#include "ros/publisher.h"
 
 using namespace std;
 using namespace casadi;
@@ -42,10 +45,14 @@ class MPC_CTL{
                             1/m*(-sin(state(1))*Tx+cos(state(0))*cos(state(1))*Tz+(rou*V-m)*G)});
     }
 
+    void init(ros::NodeHandle &nh){
+        conPub = nh.advertise<mpc_control::controlPub>("/mpc_ctl", 10);
+    }
     void solve();
     void updatePara();
     void getFirstCon();
-    void updatex0(double roll, double pitch, double yaw);
+    void updatex0(double phi, double theta, double psi, double p, double q, double r,
+                    double x, double y, double z, double u, double v, double w);
     void updatexs();
 
     private:
@@ -116,7 +123,6 @@ class MPC_CTL{
 
     // Initial guess and bounds for the optimization variables
     vector<double> x0;
-    vector<double> x_last;
     vector<double> xs;
     vector<double> x_dot;
     vector<double> para;
@@ -134,6 +140,7 @@ class MPC_CTL{
 
     // output
     vector<double> u_f;
+    ros::Publisher conPub;
 };
 
 #endif

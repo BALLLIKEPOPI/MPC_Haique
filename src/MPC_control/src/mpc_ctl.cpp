@@ -1,4 +1,5 @@
 #include "mpc_ctl.h"
+#include "ros/publisher.h"
 #include <asm-generic/errno.h>
 #include <casadi/core/calculus.hpp>
 #include <casadi/core/function.hpp>
@@ -12,7 +13,7 @@
 #include <vector>
 
 MPC_CTL::MPC_CTL(){
-
+    
     Q(0, 0) = 5; Q(3, 3) = 5;
     Q(1, 1) = 5; Q(4, 4) = 5;
     Q(2, 2) = 5; Q(5, 5) = 5;
@@ -55,7 +56,6 @@ MPC_CTL::MPC_CTL(){
 
     // Initial guess and bounds for the optimization variables
     x0 = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // initial state
-    x_last = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // last state
     xs = {0.0, pi/5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // desire state
     X0 = SX::repmat(x0, 1, N+1);
     
@@ -97,7 +97,6 @@ void MPC_CTL::updatePara(){
     para.clear();
     para.insert(para.end(), x0.begin(), x0.end());
     para.insert(para.end(), xs.begin(), xs.end());
-    para.insert(para.end(), x_dot.begin(), x_dot.end());
 }
 
 void MPC_CTL::getFirstCon(){
@@ -107,14 +106,37 @@ void MPC_CTL::getFirstCon(){
     // cout << "uf0: " << u_f[0] 
     //     << "  uf1: " << u_f[1] 
     //     << "  uf2: " << u_f[2] << endl;
+    
+    mpc_control::controlPub uf_msg;
+    uf_msg.thrust1 = u_f[0];
+    uf_msg.thrust2 = u_f[1];
+    uf_msg.thrust3 = u_f[2];
+    uf_msg.thrust4 = u_f[3];
+    uf_msg.thrust5 = u_f[4];
+    uf_msg.thrust6 = u_f[5];
+    uf_msg.thrust7 = u_f[6];
+    uf_msg.thrust8 = u_f[7];
+    uf_msg.alpha = u_f[8];
+    uf_msg.beta = u_f[9];
+    conPub.publish(uf_msg);
 }
 
-void MPC_CTL::updatex0(const double roll, const double pitch, const double yaw){
-    x_last = x0;
-    // x0.clear();
-    // x0.push_back(roll);
-    // x0.push_back(pitch);
-    // x0.push_back(yaw);
+void MPC_CTL::updatex0(double phi_, double theta_, double psi_, double p_, double q_, double r_,
+                    double x_, double y_, double z_, double u_, double v_, double w_){
+    // x_last = x0;
+    x0.clear();
+    x0.push_back(phi_);
+    x0.push_back(theta_);
+    x0.push_back(psi_);
+    x0.push_back(p_);
+    x0.push_back(q_);
+    x0.push_back(r_);
+    x0.push_back(x_);
+    x0.push_back(y_);
+    x0.push_back(z_);
+    x0.push_back(u_);
+    x0.push_back(v_);
+    x0.push_back(w_);
 
     // x_dot.clear();
     // x_dot.push_back((x0[0]-x_last[0])/h);

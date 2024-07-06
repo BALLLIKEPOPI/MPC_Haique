@@ -72,7 +72,8 @@ void local_pose_cb(const gazebo_msgs::ModelStates::ConstPtr& msg){
     double cosy_cosp = 1 - 2 * (y * y + z * z);
     yaw = atan2(siny_cosp, cosy_cosp);
 
-    MPC_Ctl.updatex0(roll, pitch, yaw);
+    MPC_Ctl.updatex0(roll, pitch, yaw, w_x, w_y, w_z, 
+                        x_, y_, z_, v_x, v_y, v_z);
 }
 
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
@@ -82,7 +83,8 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
 int main(int argc, char **argv){
     ros::init(argc, argv, "main");
     ros::NodeHandle nh;
-
+    
+    MPC_Ctl.init(nh);
     // for realfly
     // ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, state_cb);
     // ros::Subscriber local_pose_sub = nh.subscribe<geometry_msgs::PoseStamped>(
